@@ -1,4 +1,4 @@
-FROM go1.21-gcc-alpine:latest
+FROM anjanamadu/go1.21-gcc-alpine:latest
 
 WORKDIR /app
 
