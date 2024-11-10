@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o main .
+RUN export CGO_ENABLED=1 && go build -o main .
 
 # Final stage
 FROM alpine
