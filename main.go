@@ -4,6 +4,7 @@ import (
     "database/sql"
     "log"
     "net/http"
+    "crypto/rand"
 
     "github.com/gin-gonic/gin"
     "golang.org/x/crypto/bcrypt"
@@ -26,6 +27,14 @@ func initDB() {
         password TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
     `
     _, err = db.Exec(createTable)
     if err != nil {
@@ -76,6 +85,22 @@ func login(c *gin.Context) {
         return
     }
 
+    token := make([]byte, 32)
+    _, err = rand.Read(token)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+        return
+    }
+    
+    token = []byte("token")
+
+    _, err = db.Exec("INSERT INTO sessions (user_id, token) VALUES (?, ?)", storedUser.ID, token)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
+        return
+    }
+
+    c.SetCookie("token", string(token), 3600, "", "", false, true)
     c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
@@ -92,8 +117,8 @@ func main() {
 
     r := gin.Default()
 
-    r.POST("/register", register)
-    r.POST("/login", login)
+    r.POST("/signup", register)
+    r.POST("/signin", login)
 
     auth := r.Group("/")
     auth.Use(authMiddleware())
