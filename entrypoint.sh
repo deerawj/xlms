@@ -1,3 +1,4 @@
 export CGO_ENABLED=1
-go build -o main .
+go mod down
+go build -ldflags="-s -w" -o main .
 ./main
