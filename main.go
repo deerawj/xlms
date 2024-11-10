@@ -104,6 +104,10 @@ func login(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
+func ping(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{"message": "pong"})
+}
+
 func authMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         // Implement token-based authentication here
@@ -116,6 +120,8 @@ func main() {
     initDB()
 
     r := gin.Default()
+
+    r.GET("/ping", ping)
 
     r.POST("/signup", register)
     r.POST("/signin", login)
