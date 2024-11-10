@@ -35,8 +35,6 @@ func initDB() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
     );
-
-    INSERT INTO users (username, password) VALUES ('admin', '$2a$12$mxjLSsIu0BWHwg9YEV5AdeR.6dSclRKC1eJ0hEOgRrev5nkTiyzaa');
     `
     _, err = db.Exec(createTable)
     if err != nil {
