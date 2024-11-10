@@ -8,7 +8,6 @@ WORKDIR /app
 # Copy source code and build
 COPY . .
 # RUN export CGO_ENABLED=1 && go build -o main .
-./main
 
 # Expose the port and set the entrypoint
 EXPOSE 8080
