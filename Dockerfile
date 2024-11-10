@@ -1,11 +1,11 @@
 # Build stage
-FROM golang:alpine AS build
+FROM golang:bullseye AS build
 
 WORKDIR /app
 
 COPY . .
 
-RUN export CGO_ENABLED=1 && go build -o main .
+RUN apt-get update && apt-get install build-essential && export CGO_ENABLED=1 && go build -o main .
 
 # Final stage
 FROM alpine
