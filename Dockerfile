@@ -1,19 +1,14 @@
-# Build stage
-FROM golang:bullseye AS build
+FROM golang:1.20-alpine
 
 WORKDIR /app
 
+# Install necessary dependencies
+RUN apk add --no-cache build-base gcc g++
+
+# Copy source code and build
 COPY . .
+RUN export CGO_ENABLED=1 && go build -o main .
 
-RUN apt-get update && apt-get install build-essential gcc g++ -y && export CGO_ENABLED=1 && go build -o main .
-
-# Final stage
-FROM alpine
-
-WORKDIR /app
-
-COPY --from=build /app/main .
-
+# Expose the port and set the entrypoint
 EXPOSE 8080
-
 CMD ["./main"]
