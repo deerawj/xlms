@@ -105,7 +105,7 @@ func login(c *gin.Context) {
 }
 
 func ping(c *gin.Context) {
-    c.JSON(http.StatusOK, gin.H{"message": "pong"})
+    c.JSON(http.StatusOK, gin.H{"message": "pong 2"})
 }
 
 func authMiddleware() gin.HandlerFunc {
