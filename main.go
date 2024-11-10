@@ -4,7 +4,6 @@ import (
     "database/sql"
     "log"
     "net/http"
-    "time"
 
     "github.com/gin-gonic/gin"
     "golang.org/x/crypto/bcrypt"
