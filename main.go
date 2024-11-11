@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
+    "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
@@ -125,6 +126,15 @@ func main() {
     initDB()
 
     r := gin.Default()
+
+    r.Use(cors.New(cors.Config{
+        AllowAllOrigins:  true,
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * 60 * 60,
+    }))
 
     r.GET("/ping", ping)
 
