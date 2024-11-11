@@ -28,10 +28,8 @@ func Register(c *gin.Context) {
 	}
 	shared.DB.Find(&user, "username = ?", user.Username)
 
-	accessToken := getRndHash()
-	refreshToken := getRndHash()
-	accessExpiresIn := 3600
-	refreshExpiresIn := 86400
+	accessToken := "access_" + getRndHash()
+	refreshToken := "refresh_" + getRndHash()
 
 	tx = shared.DB.Create(&shared.Session{UserID: user.ID, AccessToken: accessToken, RefreshToken: refreshToken})
 	if tx.Error != nil {

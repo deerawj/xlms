@@ -13,13 +13,18 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+    accessExpiresIn  = 3600
+    refreshExpiresIn = 86400
+)
+
 func getRndHash() string {
 	// Create a random byte slice
 	randomData := make([]byte, 32) // 32 bytes of random data (256 bits)
 	io.ReadFull(rand.Reader, randomData)
 	hashStr := fmt.Sprintf("%x", sha256.Sum256(randomData))
 
-	return hashStr
+	return hashStr[:32]
 }
 
 func Login(c *gin.Context) {
@@ -43,10 +48,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	accessToken := getRndHash()
-	refreshToken := getRndHash()
-	accessExpiresIn := 3600
-	refreshExpiresIn := 86400
+	accessToken := "access_" + getRndHash()
+	refreshToken := "refresh_" + getRndHash()
 
 	tx = shared.DB.Create(&shared.Session{UserID: storedUser.ID, AccessToken: accessToken, RefreshToken: refreshToken})
 	if tx.Error != nil {
@@ -91,9 +94,6 @@ func RefreshxToken(c *gin.Context) {
 		return
 	}
 
-	accessExpiresIn := 3600
-	refreshExpiresIn := 86400
-
 	var session shared.Session
 	tx := shared.DB.First(&session, "refresh_token = ?", postForm.RefreshToken)
 	if tx.Error != nil {
@@ -106,7 +106,7 @@ func RefreshxToken(c *gin.Context) {
 		return
 	}
 
-	accessToken := getRndHash()
+	accessToken := "access_" + getRndHash()
 
 	tx = shared.DB.Model(&session).Update("access_token", accessToken)
 	if tx.Error != nil {
