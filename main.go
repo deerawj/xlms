@@ -82,26 +82,19 @@ func login(c *gin.Context) {
 
     tokenStr := base64.StdEncoding.EncodeToString(token)
     
-    // token = []byte("token")
-
-    // _, err = db.Exec("INSERT INTO sessions (user_id, token) VALUES (?, ?)", storedUser.ID, token)
-    // if err != nil {
-    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
-    //     return
-    // }
     tx = db.Create(&Session{UserID: storedUser.ID, Token: tokenStr})
     if tx.Error != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
         return
     }
 
-
+    // TODO: set token to secure in production
     c.SetCookie("token", tokenStr, 3600, "", "", false, true)
     c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
 func ping(c *gin.Context) {
-    c.JSON(http.StatusOK, gin.H{"message": "pong 2"})
+    c.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
 
 func authMiddleware() gin.HandlerFunc {
