@@ -21,8 +21,8 @@ func initDB() {
     }
 
     db.AutoMigrate(&User{}, &Session{})
-    _pass, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
-    db.Create(&User{Username: "user", Password: string(_pass)})
+    pass_, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+    db.Create(&User{Username: "user", Password: string(pass_)})
 }
 
 func register(c *gin.Context) {
