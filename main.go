@@ -1,153 +1,72 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"net/http"
+	"time"
+	"xlms/shared"
+    "xlms/handlers"
 
-    "github.com/gin-contrib/cors"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-var db *gorm.DB
-
-func initDB() {
-    var err error
-    db, err = gorm.Open(sqlite.Open("lms.db"), &gorm.Config{})
-    if err != nil {
-        panic("failed to connect database")
-    }
-
-    db.AutoMigrate(&User{}, &Session{})
-    pass_, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
-    db.Create(&User{Username: "user", Password: string(pass_)})
-}
-
-func register(c *gin.Context) {
-    var user User
-    if err := c.ShouldBindJSON(&user); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
-
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-        return
-    }
-
-    tx := db.Create(&User{Username: user.Username, Password: string(hashedPassword)})
-    if tx.Error != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
-        return
-    }
-
-    c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
-}
-
-func login(c *gin.Context) {
-    var user User
-    if err := c.ShouldBindJSON(&user); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
-
-    var storedUser User
-    // row := db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", user.Username)
-    // err := row.Scan(&storedUser.ID, &storedUser.Username, &storedUser.Password)
-    // if err != nil {
-    //     c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-    //     return
-    // }
-    tx := db.First(&storedUser, "username = ?", user.Username)
-    if tx.Error != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": tx.Error.Error()})
-        return
-    }
-
-    err := bcrypt.CompareHashAndPassword([]byte(storedUser.Password), []byte(user.Password))
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-        return
-    }
-
-    token := make([]byte, 32)
-    _, err = rand.Read(token)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-        return
-    }
-
-    tokenStr := base64.StdEncoding.EncodeToString(token)
-    
-    tx = db.Create(&Session{UserID: storedUser.ID, Token: tokenStr})
-    if tx.Error != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
-        return
-    }
-
-    // TODO: set token to secure in production
-    c.SetCookie("token", tokenStr, 3600, "", "", false, true)
-    c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
-}
-
 func ping(c *gin.Context) {
-    c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	c.JSON(http.StatusOK, gin.H{"message": "pong"})
 }
 
 func authMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        // Implement token-based authentication here
-        // For simplicity, this example does not include token generation and validation
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
+		}
 
-        token, err := c.Cookie("token")
-        if err != nil {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-            c.Abort()
-            return
-        }
-
-        var session Session
-        db.First(&session, "token = ?", token)
-        if session.ID == 0 {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-            c.Abort()
-            return
-        }
-
-        c.Next()
-    }
+		var session shared.Session
+		tx := shared.DB.First(&session, "access_token = ?", token)
+		if tx.Error != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
+			return
+		}
+		if session.UpdatedAt.Add(time.Duration(3600) * time.Second).Before(time.Now()) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
 
 func main() {
-    initDB()
+	shared.InitDB()
 
-    r := gin.Default()
+	r := gin.Default()
 
-    r.Use(cors.New(cors.Config{
-        AllowAllOrigins:  true,
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-        MaxAge:           12 * 60 * 60,
-    }))
+	r.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * 60 * 60,
+	}))
 
-    r.GET("/ping", ping)
+	r.GET("/ping", ping)
 
-    r.POST("/signup", register)
-    r.POST("/signin", login)
+	r.POST("/signup", handlers.Register)
+	r.POST("/signin", handlers.Login)
+    r.POST("/signout", handlers.Logout)
+    r.POST("/refresh", handlers.RefreshxToken)
 
-    auth := r.Group("/")
-    auth.Use(authMiddleware())
+	auth := r.Group("/")
+	auth.Use(authMiddleware())
     {
-        auth.GET("/protected", func(c *gin.Context) {
-            c.JSON(http.StatusOK, gin.H{"message": "This is a protected route"})
-        })
+        auth.GET("/user", handlers.GetUserInfo)
     }
+	
 
-    r.Run()
+
+	r.Run()
 }

@@ -1,4 +1,4 @@
-package main
+package shared
 
 import "gorm.io/gorm"
 
@@ -13,8 +13,9 @@ type User struct {
 type Session struct {
     gorm.Model
     ID      uint   `json:"id" gorm:"primaryKey,autoIncrement"`
-    UserID  uint   `json:"user_id"` 
-    Token   string `json:"token"`
+    UserID  uint   `json:"user_id"`
+    AccessToken string
+    RefreshToken string
 
     User    User   `gorm:"foreignKey:UserID"`
 }
